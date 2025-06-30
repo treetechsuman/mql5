@@ -31,7 +31,7 @@ string SanitizeName(string name) {
 void InitDashboard(string &symbols[], string &rowLabels[], int baseX = 10, int baseY = 20) {
    ArrayCopy(gSymbols, symbols);
    ArrayCopy(gRowLabels, rowLabels);
-   gCellWidth = 200;
+   gCellWidth = 300;
    gCellHeight = 60;
    gBaseX = baseX;
    gBaseY = baseY;
@@ -101,11 +101,11 @@ void UpdateDashboard(string symbol, SignalStatus &status) {
       color bgColor = clrWhite;
       color textColor = clrBlack;
       
-      if (StringFind(text, "BUY") == 0) {
+      if (StringFind(text, "BUY") != -1) {
          bgColor = clrGreen;
          textColor = clrWhite;
       }
-      else if (StringFind(text, "SELL") == 0) {
+      else if (StringFind(text, "SELL") != -1) {
          bgColor = clrRed;
          textColor = clrWhite;
       }

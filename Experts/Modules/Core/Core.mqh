@@ -5,5 +5,6 @@
 #include "SymbolManager.mqh";
 #include "RiskManagement.mqh";
 #include "Utils.mqh";
-
+#include "VolatilityRegime.mqh";
+#include "DailyLossLimiter.mqh";
 #endif

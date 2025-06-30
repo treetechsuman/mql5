@@ -167,9 +167,14 @@ bool FFT_GPU(int direction,int power,float &data_real[],float &data_imag[],ulong
       return(false);
      }
 //--- determine maximum work-group size 
-   int local_size=(int)CLGetInfoInteger(OpenCL.GetKernel(0),CL_KERNEL_WORK_GROUP_SIZE);
+   int workgroup_size=(int)CLGetInfoInteger(OpenCL.GetKernel(0),CL_KERNEL_WORK_GROUP_SIZE);
 //--- determine local memory size 
    uint local_mem_size=(uint)CLGetInfoInteger(OpenCL.GetContext(),CL_DEVICE_LOCAL_MEM_SIZE);
+   local_mem_size/=3;
+   local_mem_size*=2;
+   local_mem_size/=64;
+   local_mem_size*=64;
+
    int points_per_group=(int)local_mem_size/(2*sizeof(float));
    if(points_per_group>num_points)
       points_per_group=num_points;
@@ -182,12 +187,12 @@ bool FFT_GPU(int direction,int power,float &data_real[],float &data_imag[],ulong
    OpenCL.SetArgument(0,5,direction);
 //--- OpenCL execute settings
    int task_dimension=1;
-   uint global_size=(uint)((num_points/points_per_group)*local_size);
+   uint global_size=(uint)((num_points/points_per_group)*workgroup_size);
    uint global_work_offset[1]={0};
    uint global_work_size[1];
    global_work_size[0]=global_size;
    uint local_work_size[1];
-   local_work_size[0]=local_size;
+   local_work_size[0]=workgroup_size;
 //--- GPU calculation start
    time_gpu=GetMicrosecondCount();
 //-- execute kernel fft_init

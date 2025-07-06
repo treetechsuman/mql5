@@ -12,6 +12,7 @@
 
 #include "Modules/Strategies/AdaptiveBBStrategy/Context.mqh"
 #include "Modules/Strategies/AdaptiveBBStrategy/Strategy.mqh"
+#include "Modules/Strategies/AdaptiveBBStrategy/MarketState.mqh"
 
 CArrayObj contexts;
 //CTrade trade;
@@ -25,12 +26,13 @@ int OnInit() {
 
    string list[];
    StringSplit(Symbols, ',', list);
-
+   
    for (int i = 0; i < ArraySize(list); i++) {
       SymbolData *sd = new SymbolData;
       if (sd.Init(list[i])) {
          SymbolContext *ctx = new SymbolContext(sd,RSIPeriod,ATRPeriod,ADXPeriod, BBPeriod, BBLossExitDeviation,BBEntryDeviation,BBProfitExitDeviation, VolLookback, Timeframe);
          contexts.Add(ctx);
+         
       } else {
          delete sd;
       }
@@ -57,13 +59,14 @@ void OnTick() {
    for (int i = 0; i < contexts.Total(); i++) {
       SymbolContext *ctx = (SymbolContext*)contexts.At(i);
       SymbolData *sd = ctx.sd;
-      UpdateTrailingSL(ctx);
+      //UpdateTrailingSL(ctx);
       if (!sd.IsNewCandle(Timeframe)) continue;
       
 
       sd.LoadMarketData(Timeframe, VolLookback);
       ctx.LoadIndicators();
       //display infor in dashboard
+      
       string marketState = GetMarketState(ctx);
       SignalStatus s1;
       ArrayResize(s1.values, 4);
@@ -82,13 +85,14 @@ void OnTick() {
          
       }
       if(marketState=="Ranging") {
-         //BBRangingStrategy(ctx);
+         BBRangingStrategy(ctx);
       }
       //BBSqueezeStrategy(ctx);
       //UpdateTrailingSL(ctx);
       //ProcessSymbol(ctx);
       //BBRangingStrategy(ctx);
-      BBRangingStrategy(ctx);
+      
+      //BBRangingScalpingStrategy(ctx);
    }
 }
 
@@ -115,44 +119,5 @@ void OnTradeTransaction(const MqlTradeTransaction &trans, const MqlTradeRequest 
    }
 }
 
-string GetMarketState(SymbolContext *ctx) {
-   double bw = ctx.GetEntryBBUpper(0) - ctx.GetEntryBBLower(0);  // current BB width
-   double avgBW = 0;
-   for(int i = 1; i < VolLookback; i++) 
-      avgBW += (ctx.GetEntryBBUpper(i) - ctx.GetEntryBBLower(1));
-   avgBW /= VolLookback;
 
-   double atr = ctx.GetATR(0);  // assume you're storing ATR per symbol in sd
 
-   // === Squeeze Detection with Buffer ===
-   double strictSqueeze = avgBW * SqueezeFactor;           // e.g., 0.8
-   double bufferSqueeze = strictSqueeze * 1.1;              // add 10% tolerance
-
-   //if(bw < strictSqueeze) return "Squeeze";
-   //if(bw < strictSqueeze && avgBW > 0.0001) return "Squeeze";
-   //if(bw < bufferSqueeze) return "SqueezeLikely";  // transitional
-
-   // === Trending Detection with ADX Buffer ===
-   double adx = ctx.GetADX(0);
-   double plusDI = ctx.GetPlusDI(0);
-   double minusDI = ctx.GetMinusDI(0);
-   double price = ctx.sd.priceData[1].close;
-   double midBand = ctx.GetMiddleBB(0);
-   double diGap = MathAbs(plusDI - minusDI);
-   if(adx > (ADXTradeValue+2)&& diGap > 2) {
-      double diGap = MathAbs(plusDI - minusDI);
-      if(plusDI > minusDI && price > midBand) return "Trending";
-      if(minusDI > plusDI && price < midBand) return "Trending";
-   }
-
-   // === Ranging Detection with ATR-based Band Stability ===
-   if(adx < (ADXTradeValue-2) &&
-      MathAbs(ctx.GetEntryBBUpper(0) - ctx.GetEntryBBUpper(1)) < atr * 0.1 &&
-      MathAbs(ctx.GetEntryBBLower(0) - ctx.GetEntryBBLower(1)) < atr * 0.1)
-      return "Ranging";
-
-   // === Neutral fallback ===
-   //double slope = ctx.GetMiddleBB(0) - ctx.GetMiddleBB(3);  // Over 3 candles
-   //if(MathAbs(slope) < atr * 0.1) return "Neutral";  // Not strong enough
-   return "Ranging";
-}
